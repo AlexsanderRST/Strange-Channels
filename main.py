@@ -2,11 +2,13 @@
 Alexsander Rosante's creation 2022
 """
 
+from random import randint
 from pygame.locals import *
 
 import pygame
 
 pygame.init()
+pygame.mixer.init()
 
 
 # UI ###################################################################################################################
@@ -15,7 +17,7 @@ class Button(pygame.sprite.Sprite):
         super().__init__()
 
         # properties
-        font = pygame.font.Font('font/VT323.ttf', 90)
+        font = pygame.font.Font('font/VT323.ttf', 75)
         self.on_click = on_click
 
         # surface
@@ -47,7 +49,7 @@ class Button(pygame.sprite.Sprite):
 class Text(pygame.sprite.Sprite):
     def __init__(self, text, color='yellow'):
         super().__init__()
-        font = pygame.font.Font('font/VT323.ttf', 90)
+        font = pygame.font.Font('font/VT323.ttf', 75)
         self.image = font.render(text, True, color)
         self.rect = self.image.get_rect()
 
@@ -120,10 +122,21 @@ class Scene:
         surface.blit(self.crt_overlay, (0, 0))
 
 
-class SceneRed(Scene):
+class SceneMenu(Scene):
     def __init__(self):
         super().__init__()
-        self.bg_color = 'red'
+
+        # add buttons
+        for i in range(1, 5):
+            button = Button(f'Tape {i}')
+            button.rect.center = screen_w / 2, i / 5 * screen_h
+            self.add_button(button)
+
+
+class SceneWomanCode(Scene):
+    def __init__(self):
+        super().__init__()
+
 
 
 class SceneQuit(Scene):
@@ -152,7 +165,9 @@ class Game:
         self.clock = pygame.time.Clock()
         self.events = pygame.event.get()
         self.loop = True
-        self.scene = SceneRed()
+        self.scene = SceneMenu()
+
+        self.lucky_number = randint(10000, 99999)
 
     def change_scene(self, scene: Scene):
         self.scene = scene
