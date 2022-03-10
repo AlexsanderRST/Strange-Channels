@@ -5,6 +5,7 @@ Alexsander Rosante's creation 2022
 from random import randint
 from pygame.locals import *
 
+import math
 import pygame
 
 pygame.init()
@@ -17,11 +18,11 @@ class Button(pygame.sprite.Sprite):
         super().__init__()
 
         # properties
-        font = pygame.font.Font('font/VT323.ttf', 75)
+        font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
         self.on_click = on_click
 
         # surface
-        text_surf = font.render(text, False, color)
+        text_surf = font.render(text, True, color)
         surf_w = text_surf.get_width() + 2 * padx
         surf_h = text_surf.get_height() + 2 * pady
 
@@ -32,7 +33,7 @@ class Button(pygame.sprite.Sprite):
         # hovered idle
         self.surf_hovered = pygame.Surface((surf_w, surf_h))
         self.surf_hovered.fill(color)
-        text_surf = font.render(text, False, bg_color)
+        text_surf = font.render(text, True, bg_color)
         self.surf_hovered.blit(text_surf, (padx, pady))
 
         # image'n'rect
@@ -46,28 +47,76 @@ class Button(pygame.sprite.Sprite):
         self.image = self.surf_idle.copy()
 
 
+class Caption(pygame.sprite.Sprite):
+    def __init__(self, text):
+        super().__init__()
+        font = pygame.font.Font('font/SourceSansPro-Italic.ttf', 28)
+        self.image = font.render(text, True, 'orange', 'black')
+        self.rect = self.image.get_rect(midbottom=(screen_w / 2, screen_h * .9))
+
+
+class ChannelIndicator(pygame.sprite.Sprite):
+    def __init__(self, number: int, pady=5):
+        super().__init__()
+        font = pygame.font.Font('font/ArchivoBlack.ttf', 32)
+        number_surf = font.render(str(number), True, 'white')
+        self.image = pygame.Surface((round(0.12 * screen_w), number_surf.get_height() + 2 * pady))
+        self.image.fill('darkblue')
+        self.rect = self.image.get_rect()
+        number_rect = number_surf.get_rect(midright=(self.rect.w - 5, self.rect.h / 2))
+        self.image.blit(number_surf, number_rect)
+        self.dur = 60
+
+    def update(self):
+        if not self.dur:
+            self.kill()
+        self.dur -= 1
+
+
 class Text(pygame.sprite.Sprite):
     def __init__(self, text, color='yellow'):
         super().__init__()
-        font = pygame.font.Font('font/VT323.ttf', 75)
+        font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
+        font.set_italic(True)
         self.image = font.render(text, True, color)
         self.rect = self.image.get_rect()
+        self.alpha = 255
 
 
 # Scene ################################################################################################################
 class Scene:
-    def __init__(self):
+    def __init__(self, channel_num=1):
+
+        # properties
         self.bg_color = 'blue'
+        self.channel_num = channel_num
+
+        # overlay
         self.crt_overlay = pygame.image.load('pics/border.png').convert_alpha()
-        self.buttons = pygame.sprite.Group()
-        self.hovered = pygame.sprite.GroupSingle()
+
+        # draw group
         self.drawables = pygame.sprite.LayeredUpdates()
 
+        # update groups
+        self.buttons = pygame.sprite.Group()
+        self.caption = pygame.sprite.GroupSingle()
+        self.channel_indicator = pygame.sprite.GroupSingle()
+
+        # states
+        self.hovered = pygame.sprite.GroupSingle()
+
         self.draw_crt_lines()
+        self.show_channel_num()
 
     def add_button(self, button: Button):
         self.buttons.add(button)
         self.show(button)
+
+    def add_caption(self, caption: Caption):
+        if self.caption.sprite:
+            self.caption.sprite.kill()
+        self.caption.add(caption)
+        self.show(caption)
 
     def add_text(self, text: Text):
         self.show(text)
@@ -110,11 +159,18 @@ class Scene:
     def show(self, sprite: pygame.sprite.Sprite):
         self.drawables.add(sprite)
 
+    def show_channel_num(self):
+        indicator = ChannelIndicator(self.channel_num)
+        indicator.rect.topright = .9 * screen_w, .1 * screen_h
+        self.channel_indicator.add(indicator)
+        self.show(indicator)
+
     def update(self, events: list):
         self.check_collisions()
         self.check_events(events)
         self.cursor_by_context()
         self.buttons.update()
+        self.channel_indicator.update()
 
     def draw(self, surface: pygame.Surface):
         surface.fill(self.bg_color)
@@ -133,10 +189,39 @@ class SceneMenu(Scene):
             self.add_button(button)
 
 
-class SceneWomanCode(Scene):
+class Channel2(Scene):
+    """Offline"""
     def __init__(self):
-        super().__init__()
+        super().__init__(channel_num=2)
 
+    def draw(self, surface: pygame.Surface):
+        draw_color_bars(surface)
+        self.drawables.draw(surface)
+        surface.blit(self.crt_overlay, (0, 0))
+
+
+class Channel3(Scene):
+    """A woman says the lucky numbers indefinitely"""
+    def __init__(self):
+        super().__init__(channel_num=3)
+        lucky_nums_list = list(str(game.lucky_nums))
+        self.speech_list = ['the_numbers_are', *lucky_nums_list, 'repeating', *lucky_nums_list]
+        self.frame = 0.00
+        self.speech_speed = .01
+
+    def say_the_lucky_nums(self):
+        if self.frame >= len(self.speech_list):
+            self.frame = 0.00
+        if '{:.2f}'.format(self.frame)[-2:] == '00':
+            pygame.mixer.Sound(f'sfxs/{self.speech_list[int(self.frame)]}.mp3').play()
+            caption_text = self.speech_list[int(self.frame)]
+            caption_text = 'the numbers are' if caption_text == 'the_numbers_are' else caption_text
+            self.add_caption(Caption(caption_text))
+        self.frame = round(self.frame + self.speech_speed, 2)
+
+    def update(self, events: list):
+        super().update(events)
+        self.say_the_lucky_nums()
 
 
 class SceneQuit(Scene):
@@ -165,9 +250,9 @@ class Game:
         self.clock = pygame.time.Clock()
         self.events = pygame.event.get()
         self.loop = True
-        self.scene = SceneMenu()
+        self.scene = Scene()
 
-        self.lucky_number = randint(10000, 99999)
+        self.lucky_nums = randint(10000, 99999)
 
     def change_scene(self, scene: Scene):
         self.scene = scene
@@ -185,6 +270,7 @@ class Game:
         self.loop = False
 
     def run(self):
+        self.scene = Channel2()
         while self.loop:
             self.check_events()
             self.scene.update(self.events)
@@ -196,10 +282,16 @@ class Game:
 
 # Functions ############################################################################################################
 
+def draw_color_bars(surface: pygame.Surface,
+                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', (30, 30, 30))):
+    bar_w, bar_h = math.ceil(surface.get_width() / len(colors)), surface.get_height()
+    for i, color in enumerate(colors):
+        pygame.draw.rect(surface, color, [bar_w * i, 0, bar_w, bar_h])
+
 
 if __name__ == '__main__':
     # properties
-    version = '0.1'
+    version = '0.1.2a'
     screen_w = 648
     screen_h = 648
     fps = 60
