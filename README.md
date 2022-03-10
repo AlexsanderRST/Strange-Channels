@@ -5,14 +5,14 @@ O jogador pode usar o scroll do mouse para surfar entre eles.
 Também pode clicar o scroll para acessar a lista de canais.
 Se clicar o ESC, ele vai para o canal 9 (Tela de saída);
 
-Por equanto serão 10:
+For now, 10 channels are available:
 - 1: Tutorial;
-- 2: Sem sinal;
-- 3: Mulher falando o lucky code;
-- 4: Sem sinal;
-- 5: Sem Sinal;
-- 6: Pentagrama;
-- 7: Sem sinal;
-- 8: Sem sinal, mas com instruções do puzzle;
-- 9: Tela de saída;
-- 10: Sem sinal;
+- 2: No signal;
+- 3: Woman telling the lucky numbers;
+- 4: No signal;
+- 5: No signal;
+- 6: Pentagram;
+- 7: No signal;
+- 8: No siganl, but lucky colors are show;
+- 9: No signal;
+- 10: No signal;

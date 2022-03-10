@@ -2,10 +2,10 @@
 Alexsander Rosante's creation 2022
 """
 
-from random import randint
 from pygame.locals import *
 
 import math
+import random
 import pygame
 
 pygame.init()
@@ -70,6 +70,7 @@ class ChannelIndicator(pygame.sprite.Sprite):
     def update(self):
         if not self.dur:
             self.kill()
+            return
         self.dur -= 1
 
 
@@ -138,6 +139,10 @@ class Scene:
                     for button in self.buttons:
                         if button.rect.collidepoint(event.pos):
                             button.on_click()
+                elif event.button == 4:
+                    game.previous_channel()
+                elif event.button == 5:
+                    game.next_channel()
 
     def cursor_by_context(self):
         if self.hovered:
@@ -172,6 +177,9 @@ class Scene:
         self.buttons.update()
         self.channel_indicator.update()
 
+    def update_weak(self):
+        pass
+
     def draw(self, surface: pygame.Surface):
         surface.fill(self.bg_color)
         self.drawables.draw(surface)
@@ -189,10 +197,13 @@ class SceneMenu(Scene):
             self.add_button(button)
 
 
-class Channel2(Scene):
+class NoSignal(Scene):
     """Offline"""
-    def __init__(self):
-        super().__init__(channel_num=2)
+    def __init__(self, channel_num: int):
+        super().__init__(channel_num)
+
+    def update(self, events: list):
+        super().update(events)
 
     def draw(self, surface: pygame.Surface):
         draw_color_bars(surface)
@@ -200,8 +211,21 @@ class Channel2(Scene):
         surface.blit(self.crt_overlay, (0, 0))
 
 
+class Channel1(Scene):
+    """Tutorial"""
+
+    def __init__(self):
+        super().__init__(channel_num=1)
+
+
+class Channel2(NoSignal):
+    def __init__(self):
+        super().__init__(2)
+
+
 class Channel3(Scene):
     """A woman says the lucky numbers indefinitely"""
+
     def __init__(self):
         super().__init__(channel_num=3)
         lucky_nums_list = list(str(game.lucky_nums))
@@ -219,9 +243,59 @@ class Channel3(Scene):
             self.add_caption(Caption(caption_text))
         self.frame = round(self.frame + self.speech_speed, 2)
 
+    def update_weak(self):
+        if self.frame >= len(self.speech_list):
+            self.frame = 0.00
+        self.frame = round(self.frame + self.speech_speed, 2)
+
     def update(self, events: list):
         super().update(events)
         self.say_the_lucky_nums()
+
+
+class Channel4(NoSignal):
+    def __init__(self):
+        super().__init__(4)
+
+
+class Channel5(NoSignal):
+    def __init__(self):
+        super().__init__(5)
+
+
+class Channel6(Scene):
+    """Pentagram"""
+
+    def __init__(self):
+        super().__init__(channel_num=6)
+        self.bg_color = (20, 20, 20)
+
+
+class Channel7(NoSignal):
+    def __init__(self):
+        super().__init__(7)
+
+
+class Channel8(Scene):
+    """Offline, but with puzzle instruction"""
+
+    def __init__(self):
+        super().__init__(channel_num=8)
+
+    def draw(self, surface: pygame.Surface):
+        draw_color_bars(surface, game.lucky_colors)
+        self.drawables.draw(surface)
+        surface.blit(self.crt_overlay, (0, 0))
+
+
+class Channel9(NoSignal):
+    def __init__(self):
+        super().__init__(9)
+
+
+class Channel10(NoSignal):
+    def __init__(self):
+        super().__init__(10)
 
 
 class SceneQuit(Scene):
@@ -252,7 +326,12 @@ class Game:
         self.loop = True
         self.scene = Scene()
 
-        self.lucky_nums = randint(10000, 99999)
+        self.lucky_nums = random.randint(10000, 99999)
+        self.lucky_colors = ['yellow', 'cyan', 'green', 'magenta', 'blue']
+        random.shuffle(self.lucky_colors)
+
+        self.channels = {}
+        self.cur_channel = 3
 
     def change_scene(self, scene: Scene):
         self.scene = scene
@@ -266,14 +345,47 @@ class Game:
                 if event.key == K_ESCAPE:
                     self.scene = SceneQuit(self.scene)
 
+    def next_channel(self):
+        self.cur_channel += 1
+        if self.cur_channel > len(self.channels):
+            self.cur_channel = 1
+        self.scene = self.channels[self.cur_channel]
+        self.scene.show_channel_num()
+
+    def previous_channel(self):
+        self.cur_channel -= 1
+        if self.cur_channel < 1:
+            self.cur_channel = len(self.channels)
+        self.scene = self.channels[self.cur_channel]
+        self.scene.show_channel_num()
+
     def quit(self):
         self.loop = False
 
+    def set_channels(self):
+        self.channels = {1: Channel1(),
+                         2: Channel2(),
+                         3: Channel3(),
+                         4: Channel4(),
+                         5: Channel5(),
+                         6: Channel6(),
+                         7: Channel7(),
+                         8: Channel8(),
+                         9: Channel9(),
+                         10: Channel10()}
+        self.scene = self.channels[self.cur_channel]
+
+    def update_weak(self):
+        for channel in self.channels.values():
+            if not channel == self.scene:
+                channel.update_weak()
+
     def run(self):
-        self.scene = Channel2()
+        self.set_channels()
         while self.loop:
             self.check_events()
             self.scene.update(self.events)
+            self.update_weak()
             self.scene.draw(self.screen)
             pygame.display.update()
             self.clock.tick(fps)
@@ -283,7 +395,7 @@ class Game:
 # Functions ############################################################################################################
 
 def draw_color_bars(surface: pygame.Surface,
-                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', (30, 30, 30))):
+                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', (20, 20, 20))):
     bar_w, bar_h = math.ceil(surface.get_width() / len(colors)), surface.get_height()
     for i, color in enumerate(colors):
         pygame.draw.rect(surface, color, [bar_w * i, 0, bar_w, bar_h])
@@ -291,7 +403,7 @@ def draw_color_bars(surface: pygame.Surface,
 
 if __name__ == '__main__':
     # properties
-    version = '0.1.2a'
+    version = '0.1.3a'
     screen_w = 648
     screen_h = 648
     fps = 60
