@@ -14,37 +14,77 @@ pygame.mixer.init()
 
 # UI ###################################################################################################################
 class Button(pygame.sprite.Sprite):
-    def __init__(self, text='Hello', color='yellow', bg_color='blue', padx=5, pady=0, on_click=lambda: None):
+    def __init__(self,
+                 text='Hello',
+                 color='yellow',
+                 bg_color=None,
+                 color_hovered='blue',
+                 bg_color_hovered='yellow',
+                 padx=5,
+                 pady=0,
+                 on_click=lambda: None):
         super().__init__()
 
         # properties
-        font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
+        self.text = text
+        self.font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
         self.on_click = on_click
+        self.color = color
+        self.color_hovered = color_hovered
+        self.bg_color = bg_color
+        self.bg_color_hovered = bg_color_hovered
+        self.padx = padx
+        self.pady = pady
 
-        # surface
-        text_surf = font.render(text, True, color)
-        surf_w = text_surf.get_width() + 2 * padx
-        surf_h = text_surf.get_height() + 2 * pady
+        # surface dimensions
+        text_surf = self.font.render(text, True, color)
+        self.surf_w = text_surf.get_width() + 2 * padx
+        self.surf_h = text_surf.get_height() + 2 * pady
 
-        # idle surfcae
-        self.surf_idle = pygame.Surface((surf_w, surf_h), SRCALPHA)
-        self.surf_idle.blit(text_surf, (padx, pady))
-
-        # hovered idle
-        self.surf_hovered = pygame.Surface((surf_w, surf_h))
-        self.surf_hovered.fill(color)
-        text_surf = font.render(text, True, bg_color)
-        self.surf_hovered.blit(text_surf, (padx, pady))
+        # surfaces
+        self.surf = self.get_surf()
+        self.surf_hovered = self.get_surf_hovered()
 
         # image'n'rect
-        self.image = self.surf_idle.copy()
+        self.image = self.surf.copy()
         self.rect = self.image.get_rect()
+
+    def get_surf(self):
+        self.surf = pygame.Surface((self.surf_w, self.surf_h), SRCALPHA)
+        if self.bg_color is not None:
+            self.surf.fill(self.bg_color)
+        self.surf.blit(self.font.render(self.text, True, self.color), (self.padx, self.pady))
+        return self.surf
+
+    def get_surf_hovered(self):
+        self.surf_hovered = pygame.Surface((self.surf_w, self.surf_h), SRCALPHA)
+        if self.bg_color_hovered is not None:
+            self.surf_hovered.fill(self.bg_color_hovered)
+        self.surf_hovered.blit(self.font.render(self.text, True, self.color_hovered), (self.padx, self.pady))
+        return self.surf_hovered
 
     def set_as_hovered(self):
         self.image = self.surf_hovered.copy()
 
-    def set_as_idle(self):
-        self.image = self.surf_idle.copy()
+    def set_as_default(self):
+        self.image = self.surf.copy()
+
+    def update_text(self, new_text):
+        self.text = str(new_text)
+        self.get_surf()
+        self.get_surf_hovered()
+
+
+class ButtonPentagram(Button):
+    def __init__(self):
+        super().__init__('6', 'red', '#141414', '#141414', 'red', on_click=self.increase)
+
+    def get_value(self):
+        return int(self.text)
+
+    def increase(self):
+        cur_value = int(self.text) + 1 if int(self.text) + 1 <= 9 else 0
+        self.update_text(cur_value)
 
 
 class Caption(pygame.sprite.Sprite):
@@ -91,6 +131,7 @@ class Scene:
         # properties
         self.bg_color = 'blue'
         self.channel_num = channel_num
+        self.interactive_buttons = True
 
         # overlay
         self.crt_overlay = pygame.image.load('pics/border.png').convert_alpha()
@@ -111,25 +152,26 @@ class Scene:
 
     def add_button(self, button: Button):
         self.buttons.add(button)
-        self.show(button)
+        self.sprite_show(button)
 
     def add_caption(self, caption: Caption):
         if self.caption.sprite:
             self.caption.sprite.kill()
         self.caption.add(caption)
-        self.show(caption)
+        self.sprite_show(caption)
 
     def add_text(self, text: Text):
-        self.show(text)
+        self.sprite_show(text)
 
     def check_collisions(self):
         mouse_pos = pygame.mouse.get_pos()
         for button in self.buttons:
             if button.rect.collidepoint(mouse_pos):
-                button.set_as_hovered()
-                self.hovered.add(button)
+                if self.interactive_buttons:
+                    button.set_as_hovered()
+                    self.hovered.add(button)
             else:
-                button.set_as_idle()
+                button.set_as_default()
                 self.hovered.remove(button)
 
     def check_events(self, events: list):
@@ -158,17 +200,17 @@ class Scene:
         lines_surf.set_alpha(round(255 * alpha))
         self.crt_overlay.blit(lines_surf, (0, 0))
 
-    def hide(self, sprite: pygame.sprite.Sprite):
+    def sprite_hide(self, sprite: pygame.sprite.Sprite):
         self.drawables.remove(sprite)
 
-    def show(self, sprite: pygame.sprite.Sprite):
+    def sprite_show(self, sprite: pygame.sprite.Sprite):
         self.drawables.add(sprite)
 
     def show_channel_num(self):
         indicator = ChannelIndicator(self.channel_num)
         indicator.rect.topright = .9 * screen_w, .1 * screen_h
         self.channel_indicator.add(indicator)
-        self.show(indicator)
+        self.sprite_show(indicator)
 
     def update(self, events: list):
         self.check_collisions()
@@ -247,6 +289,8 @@ class Channel3(Scene):
         if self.frame >= len(self.speech_list):
             self.frame = 0.00
         self.frame = round(self.frame + self.speech_speed, 2)
+        if self.caption.sprite:
+            self.caption.sprite.kill()
 
     def update(self, events: list):
         super().update(events)
@@ -268,7 +312,55 @@ class Channel6(Scene):
 
     def __init__(self):
         super().__init__(channel_num=6)
-        self.bg_color = (20, 20, 20)
+        self.bg_color = '#141414'
+        self.lines_colors = game.lucky_colors  # always 5 elements
+
+        # set positions
+        p1 = (.50 * screen_w, .25 * screen_h)
+        p2 = (.20 * screen_w, .50 * screen_h)
+        p3 = (.80 * screen_w, .50 * screen_h)
+        p4 = (.30 * screen_w, .80 * screen_h)
+        p5 = (.70 * screen_w, .80 * screen_h)
+
+        # choose a random start point
+        p0 = random.choice([p1, p2, p3, p4, p5])
+
+        # get a path based on choosed point
+        path = {p1: [p1, p4, p3, p2, p5],
+                p2: [p2, p5, p1, p4, p3],
+                p3: [p3, p4, p1, p5, p2],
+                p4: [p4, p3, p2, p5, p1],
+                p5: [p5, p1, p4, p3, p2],
+                }[p0]
+
+        # set the buttons
+        for i, pos in enumerate(path):
+            button = ButtonPentagram()
+            button.rect.center = pos
+            self.add_button(button)
+
+    def check_lucky_nums_match(self):
+        if game.lucky_nums == int(''.join(str(button.get_value()) for button in self.buttons)):
+            self.lines_colors = 5 * ['red']
+            self.interactive_buttons = False
+
+    def draw_lines(self, surface: pygame.Surface):
+        buttons = self.buttons.sprites()
+        for i in range(0, len(buttons) - 1):
+            start_point, end_point = buttons[i].rect.center, buttons[i + 1].rect.center
+            pygame.draw.line(surface, self.lines_colors[i], start_point, end_point, 2)
+        start_point, end_point = buttons[-1].rect.center, buttons[0].rect.center
+        pygame.draw.line(surface, self.lines_colors[-1], start_point, end_point, 2)
+
+    def update(self, events: list):
+        super().update(events)
+        self.check_lucky_nums_match()
+
+    def draw(self, surface: pygame.Surface):
+        surface.fill(self.bg_color)
+        self.draw_lines(surface)
+        self.drawables.draw(surface)
+        surface.blit(self.crt_overlay, (0, 0))
 
 
 class Channel7(NoSignal):
@@ -281,9 +373,10 @@ class Channel8(Scene):
 
     def __init__(self):
         super().__init__(channel_num=8)
+        self.bars_colors = ['white', *game.lucky_colors[:-1], 'red', game.lucky_colors[-1], '#141414']
 
     def draw(self, surface: pygame.Surface):
-        draw_color_bars(surface, game.lucky_colors)
+        draw_color_bars(surface, self.bars_colors)
         self.drawables.draw(surface)
         surface.blit(self.crt_overlay, (0, 0))
 
@@ -377,7 +470,7 @@ class Game:
 
     def update_weak(self):
         for channel in self.channels.values():
-            if not channel == self.scene:
+            if channel != self.scene:
                 channel.update_weak()
 
     def run(self):
@@ -395,7 +488,7 @@ class Game:
 # Functions ############################################################################################################
 
 def draw_color_bars(surface: pygame.Surface,
-                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', (20, 20, 20))):
+                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', '#141414')):
     bar_w, bar_h = math.ceil(surface.get_width() / len(colors)), surface.get_height()
     for i, color in enumerate(colors):
         pygame.draw.rect(surface, color, [bar_w * i, 0, bar_w, bar_h])
@@ -403,7 +496,7 @@ def draw_color_bars(surface: pygame.Surface,
 
 if __name__ == '__main__':
     # properties
-    version = '0.1.3a'
+    version = '0.1.4a'
     screen_w = 648
     screen_h = 648
     fps = 60
