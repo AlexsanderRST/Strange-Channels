@@ -1,6 +1,6 @@
 # Strange Channels
 
-![Program version](https://img.shields.io/badge/Version-1.0.0-blueviolet?style=flat-square)
+![Program version](https://img.shields.io/badge/Version-0.1a-blueviolet?style=flat-square)
 ![Python version](https://img.shields.io/badge/Python-3.10-blue?style=flat-square)
 ![Pygame version](https://img.shields.io/badge/Pygame-2.1-green?style=flat-square)
 [![Donate](https://img.shields.io/badge/Donate-Paypal-blue?style=flat-square)](https://www.paypal.com/donate?hosted_button_id=L53Z8HUNP7X66)
