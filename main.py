@@ -425,7 +425,7 @@ class SceneMenu(Scene):
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((screen_w, screen_h), NOFRAME)
-        pygame.display.set_caption(f'My Program ({version})')
+        pygame.display.set_caption(f'Strange Channels v{version}')
         self.clock = pygame.time.Clock()
         self.events = pygame.event.get()
         self.loop = True
