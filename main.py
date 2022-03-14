@@ -4,6 +4,7 @@ Alexsander Rosante's creation 2022
 
 from pygame.locals import *
 
+import json
 import math
 import random
 import pygame
@@ -77,7 +78,7 @@ class Button(pygame.sprite.Sprite):
 
 class ButtonPentagram(Button):
     def __init__(self):
-        super().__init__('6', 'red', '#141414', '#141414', 'red', on_click=self.increase)
+        super().__init__('6', 'red', '#1a1a1a', '#1a1a1a', 'red', on_click=self.increase)
 
     def get_value(self):
         return int(self.text)
@@ -142,13 +143,11 @@ class Scene:
         # update groups
         self.buttons = pygame.sprite.Group()
         self.caption = pygame.sprite.GroupSingle()
-        self.channel_indicator = pygame.sprite.GroupSingle()
 
         # states
         self.hovered = pygame.sprite.GroupSingle()
 
         self.draw_crt_lines()
-        self.show_channel_num()
 
     def add_button(self, button: Button):
         self.buttons.add(button)
@@ -192,7 +191,7 @@ class Scene:
         else:
             pygame.mouse.set_cursor(SYSTEM_CURSOR_ARROW)
 
-    def draw_crt_lines(self, n_lines=140, alpha=.3):
+    def draw_crt_lines(self, n_lines=140, alpha=.1):
         lines_surf = pygame.Surface((screen_w, screen_h), SRCALPHA)
         for i in range(n_lines):
             y = round(screen_h / n_lines * i)
@@ -200,24 +199,23 @@ class Scene:
         lines_surf.set_alpha(round(255 * alpha))
         self.crt_overlay.blit(lines_surf, (0, 0))
 
+    def play(self):
+        pass
+
     def sprite_hide(self, sprite: pygame.sprite.Sprite):
         self.drawables.remove(sprite)
 
     def sprite_show(self, sprite: pygame.sprite.Sprite):
         self.drawables.add(sprite)
 
-    def show_channel_num(self):
-        indicator = ChannelIndicator(self.channel_num)
-        indicator.rect.topright = .9 * screen_w, .1 * screen_h
-        self.channel_indicator.add(indicator)
-        self.sprite_show(indicator)
+    def stop(self):
+        pass
 
     def update(self, events: list):
         self.check_collisions()
         self.check_events(events)
         self.cursor_by_context()
         self.buttons.update()
-        self.channel_indicator.update()
 
     def update_weak(self):
         pass
@@ -228,21 +226,18 @@ class Scene:
         surface.blit(self.crt_overlay, (0, 0))
 
 
-class SceneMenu(Scene):
-    def __init__(self):
-        super().__init__()
-
-        # add buttons
-        for i in range(1, 5):
-            button = Button(f'Tape {i}')
-            button.rect.center = screen_w / 2, i / 5 * screen_h
-            self.add_button(button)
-
-
 class NoSignal(Scene):
     """Offline"""
     def __init__(self, channel_num: int):
         super().__init__(channel_num)
+        self.bg_sound = pygame.mixer.Sound('sfxs/no_signal.mp3')
+        self.bg_sound.set_volume(.1)
+
+    def stop(self):
+        self.bg_sound.stop()
+
+    def play(self):
+        self.bg_sound.play(loops=-1)
 
     def update(self, events: list):
         super().update(events)
@@ -258,6 +253,10 @@ class Channel1(Scene):
 
     def __init__(self):
         super().__init__(channel_num=1)
+        self.tuto = pygame.sprite.Sprite()
+        self.tuto.image = pygame.image.load('pics/tuto.png').convert()
+        self.tuto.rect = self.tuto.image.get_rect()
+        self.drawables.add(self.tuto)
 
 
 class Channel2(NoSignal):
@@ -274,16 +273,21 @@ class Channel3(Scene):
         self.speech_list = ['the_numbers_are', *lucky_nums_list, 'repeating', *lucky_nums_list]
         self.frame = 0.00
         self.speech_speed = .01
+        self.speech_sound = pygame.mixer.Sound('sfxs/1.mp3')
 
     def say_the_lucky_nums(self):
         if self.frame >= len(self.speech_list):
             self.frame = 0.00
         if '{:.2f}'.format(self.frame)[-2:] == '00':
-            pygame.mixer.Sound(f'sfxs/{self.speech_list[int(self.frame)]}.mp3').play()
+            self.speech_sound = pygame.mixer.Sound(f'sfxs/{self.speech_list[int(self.frame)]}.mp3')
+            self.speech_sound.play()
             caption_text = self.speech_list[int(self.frame)]
             caption_text = 'the numbers are' if caption_text == 'the_numbers_are' else caption_text
             self.add_caption(Caption(caption_text))
         self.frame = round(self.frame + self.speech_speed, 2)
+
+    def stop(self):
+        self.speech_sound.stop()
 
     def update_weak(self):
         if self.frame >= len(self.speech_list):
@@ -312,13 +316,13 @@ class Channel6(Scene):
 
     def __init__(self):
         super().__init__(channel_num=6)
-        self.bg_color = '#141414'
+        self.bg_color = '#1a1a1a'
         self.lines_colors = game.lucky_colors  # always 5 elements
 
         # set positions
-        p1 = (.50 * screen_w, .25 * screen_h)
-        p2 = (.20 * screen_w, .50 * screen_h)
-        p3 = (.80 * screen_w, .50 * screen_h)
+        p1 = (.50 * screen_w, .20 * screen_h)
+        p2 = (.20 * screen_w, .40 * screen_h)
+        p3 = (.80 * screen_w, .40 * screen_h)
         p4 = (.30 * screen_w, .80 * screen_h)
         p5 = (.70 * screen_w, .80 * screen_h)
 
@@ -373,7 +377,15 @@ class Channel8(Scene):
 
     def __init__(self):
         super().__init__(channel_num=8)
-        self.bars_colors = ['white', *game.lucky_colors[:-1], 'red', game.lucky_colors[-1], '#141414']
+        self.bars_colors = ['white', *game.lucky_colors[:-1], 'red', game.lucky_colors[-1], '#1a1a1a']
+        self.bg_sound = pygame.mixer.Sound('sfxs/no_signal.mp3')
+        self.bg_sound.set_volume(.1)
+
+    def stop(self):
+        self.bg_sound.stop()
+
+    def play(self):
+        self.bg_sound.play(loops=-1)
 
     def draw(self, surface: pygame.Surface):
         draw_color_bars(surface, self.bars_colors)
@@ -391,8 +403,8 @@ class Channel10(NoSignal):
         super().__init__(10)
 
 
-class SceneQuit(Scene):
-    def __init__(self, previous_scene: Scene):
+class SceneMenu(Scene):
+    def __init__(self):
         super().__init__()
 
         # text
@@ -401,7 +413,7 @@ class SceneQuit(Scene):
         self.add_text(text)
 
         # buttons
-        no_button = Button('No', on_click=lambda: game.change_scene(previous_scene))
+        no_button = Button('No', on_click=lambda: game.menu_close())
         no_button.rect.topleft = screen_w / 2 + 10, screen_h / 2 + 10
         self.add_button(no_button)
         yes_button = Button('Yes', on_click=game.quit)
@@ -423,34 +435,58 @@ class Game:
         self.lucky_colors = ['yellow', 'cyan', 'green', 'magenta', 'blue']
         random.shuffle(self.lucky_colors)
 
+        # channels menagement
         self.channels = {}
-        self.cur_channel = 3
+        self.cur_channel = 1
+        self.channel_indicator = pygame.sprite.GroupSingle()
+
+        # states
+        self.is_menu_open = False
 
     def change_scene(self, scene: Scene):
         self.scene = scene
+        self.show_channel_num(self.scene.channel_num)
 
     def check_events(self):
         self.events = pygame.event.get()
         for event in self.events:
             if event.type == QUIT:
                 self.quit()
-            elif event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    self.scene = SceneQuit(self.scene)
+            elif event.type == MOUSEBUTTONDOWN:
+                if event.button == 3:
+                    self.menu_open()
+
+    def menu_open(self):
+        if not self.is_menu_open:
+            self.channel_indicator.empty()
+            self.scene.stop()
+            self.scene = SceneMenu()
+            self.is_menu_open = True
+
+    def menu_close(self):
+        self.scene = self.channels[self.cur_channel]
+        self.scene.play()
+        self.is_menu_open = False
 
     def next_channel(self):
-        self.cur_channel += 1
-        if self.cur_channel > len(self.channels):
-            self.cur_channel = 1
-        self.scene = self.channels[self.cur_channel]
-        self.scene.show_channel_num()
+        if not self.is_menu_open:
+            self.scene.stop()
+            self.cur_channel += 1
+            if self.cur_channel > len(self.channels):
+                self.cur_channel = 1
+            self.scene = self.channels[self.cur_channel]
+            self.show_channel_num(self.scene.channel_num)
+            self.scene.play()
 
     def previous_channel(self):
-        self.cur_channel -= 1
-        if self.cur_channel < 1:
-            self.cur_channel = len(self.channels)
-        self.scene = self.channels[self.cur_channel]
-        self.scene.show_channel_num()
+        if not self.is_menu_open:
+            self.scene.stop()
+            self.cur_channel -= 1
+            if self.cur_channel < 1:
+                self.cur_channel = len(self.channels)
+            self.scene = self.channels[self.cur_channel]
+            self.show_channel_num(self.scene.channel_num)
+            self.scene.play()
 
     def quit(self):
         self.loop = False
@@ -468,6 +504,11 @@ class Game:
                          10: Channel10()}
         self.scene = self.channels[self.cur_channel]
 
+    def show_channel_num(self, number: int):
+        indicator = ChannelIndicator(number)
+        indicator.rect.topright = .9 * screen_w, .1 * screen_h
+        self.channel_indicator.add(indicator)
+
     def update_weak(self):
         for channel in self.channels.values():
             if channel != self.scene:
@@ -477,9 +518,11 @@ class Game:
         self.set_channels()
         while self.loop:
             self.check_events()
-            self.scene.update(self.events)
             self.update_weak()
+            self.scene.update(self.events)
+            self.channel_indicator.update()
             self.scene.draw(self.screen)
+            self.channel_indicator.draw(self.screen)
             pygame.display.update()
             self.clock.tick(fps)
         pygame.quit()
@@ -488,18 +531,22 @@ class Game:
 # Functions ############################################################################################################
 
 def draw_color_bars(surface: pygame.Surface,
-                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', '#141414')):
+                    colors=('white', 'yellow', 'cyan', 'green', 'magenta', 'red', 'blue', '#1a1a1a')):
     bar_w, bar_h = math.ceil(surface.get_width() / len(colors)), surface.get_height()
     for i, color in enumerate(colors):
         pygame.draw.rect(surface, color, [bar_w * i, 0, bar_w, bar_h])
 
 
 if __name__ == '__main__':
+    #
+    with open('settings.json', 'r') as fp:
+        info = json.load(fp)
+
     # properties
-    version = '0.1.4a'
-    screen_w = 648
-    screen_h = 648
-    fps = 60
+    version = info['version']
+    screen_w = info['screen_w']
+    screen_h = info['screen_h']
+    fps = info['fps']
 
     game = Game()
     game.run()
