@@ -23,12 +23,13 @@ class Button(pygame.sprite.Sprite):
                  bg_color_hovered='yellow',
                  padx=5,
                  pady=0,
+                 font_name='Arimo-Medium',
                  on_click=lambda: None):
         super().__init__()
 
         # properties
         self.text = text
-        self.font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
+        self.font = pygame.font.Font(f'font/{font_name}.ttf', 48)
         self.on_click = on_click
         self.color = color
         self.color_hovered = color_hovered
@@ -78,7 +79,7 @@ class Button(pygame.sprite.Sprite):
 
 class ButtonPentagram(Button):
     def __init__(self):
-        super().__init__('6', 'red', '#1a1a1a', '#1a1a1a', 'red', on_click=self.increase)
+        super().__init__('6', 'red', '#1a1a1a', '#1a1a1a', 'red', font_name='SyneMono-Regular', on_click=self.increase)
 
     def get_value(self):
         return int(self.text)
@@ -116,10 +117,12 @@ class ChannelIndicator(pygame.sprite.Sprite):
 
 
 class Text(pygame.sprite.Sprite):
-    def __init__(self, text, color='yellow'):
+    def __init__(self,
+                 text,
+                 color='cyan',
+                 font_name='Arimo-Medium'):
         super().__init__()
-        font = pygame.font.Font('font/ArchivoBlack.ttf', 48)
-        font.set_italic(True)
+        font = pygame.font.Font(f'font/{font_name}.ttf', 48)
         self.image = font.render(text, True, color)
         self.rect = self.image.get_rect()
         self.alpha = 255
@@ -184,6 +187,13 @@ class Scene:
                     game.previous_channel()
                 elif event.button == 5:
                     game.next_channel()
+
+    def clear_all(self):
+        """Clear all groups"""
+        self.buttons.empty()
+        self.caption.empty()
+        self.drawables.empty()
+        self.hovered.empty()
 
     def cursor_by_context(self):
         if self.hovered:
@@ -406,19 +416,48 @@ class Channel10(NoSignal):
 class SceneMenu(Scene):
     def __init__(self):
         super().__init__()
+        self.set_to_default()
+        self.on_default = True
+        self.click_cooldown = 1
 
-        # text
-        text = Text('Quit the game?')
-        text.rect.midbottom = screen_w / 2, screen_h / 2 - 10
+    def check_events(self, events: list):
+        for event in events:
+            if event.type == MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for button in self.buttons:
+                        if button.rect.collidepoint(event.pos):
+                            button.on_click()
+                elif event.button == 3:
+                    if self.click_cooldown:
+                        self.click_cooldown -= 1
+                    else:
+                        if self.on_default:
+                            game.menu_close()
+                        else:
+                            self.set_to_default()
+
+    def set_to_quit(self):
+        self.clear_all()
+        text = Text('Quit the game?'.upper())
+        button_yes = Button('YES', on_click=game.quit)
+        button_no = Button('NO', on_click=self.set_to_default)
+        text.rect.midbottom = .5 * screen_w, .5 * screen_h - 10
+        button_yes.rect.topright = .5 * screen_w - 10, .5 * screen_h + 10
+        button_no.rect.topleft = .5 * screen_w + 10, button_yes.rect.top
         self.add_text(text)
+        self.add_button(button_yes)
+        self.add_button(button_no)
 
-        # buttons
-        no_button = Button('No', on_click=lambda: game.menu_close())
-        no_button.rect.topleft = screen_w / 2 + 10, screen_h / 2 + 10
-        self.add_button(no_button)
-        yes_button = Button('Yes', on_click=game.quit)
-        yes_button.rect.topright = screen_w / 2 - 10, screen_h / 2 + 10
-        self.add_button(yes_button)
+    def set_to_default(self):
+        self.clear_all()
+        button_display = Button('DISPLAY')
+        button_time = Button('TIME')
+        button_channels = Button('CHANNELS')
+        button_reset = Button('RESET GAME')
+        button_quit = Button('QUIT', on_click=self.set_to_quit)
+        for i, button in enumerate((button_display, button_time, button_channels, button_reset, button_quit)):
+            button.rect.midleft = .1 * screen_w, (.2 + .15 * i) * screen_h
+            self.add_button(button)
 
 
 # Game #################################################################################################################
@@ -535,6 +574,19 @@ def draw_color_bars(surface: pygame.Surface,
     bar_w, bar_h = math.ceil(surface.get_width() / len(colors)), surface.get_height()
     for i, color in enumerate(colors):
         pygame.draw.rect(surface, color, [bar_w * i, 0, bar_w, bar_h])
+
+
+def int_to_roman(num: int):
+    return {1: 'I',
+            2: 'II',
+            3: 'III',
+            4: 'IV',
+            5: 'V',
+            6: 'VI',
+            7: 'VII',
+            8: 'VIII',
+            9: 'IX'
+            }[num]
 
 
 if __name__ == '__main__':
