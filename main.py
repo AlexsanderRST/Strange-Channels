@@ -118,11 +118,12 @@ class ChannelIndicator(pygame.sprite.Sprite):
 
 class Text(pygame.sprite.Sprite):
     def __init__(self,
-                 text,
+                 text: str,
+                 text_size=48,
                  color='cyan',
                  font_name='Arimo-Medium'):
         super().__init__()
-        font = pygame.font.Font(f'font/{font_name}.ttf', 48)
+        font = pygame.font.Font(f'font/{font_name}.ttf', text_size)  # convert
         self.image = font.render(text, True, color)
         self.rect = self.image.get_rect()
         self.alpha = 255
@@ -162,8 +163,8 @@ class Scene:
         self.caption.add(caption)
         self.sprite_show(caption)
 
-    def add_text(self, text: Text):
-        self.sprite_show(text)
+    def add_sprite(self, sprite: pygame.sprite.Sprite):
+        self.sprite_show(sprite)
 
     def check_collisions(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -275,7 +276,7 @@ class Channel2(NoSignal):
 
 
 class Channel3(Scene):
-    """A woman says the lucky numbers indefinitely"""
+    """A woman spelling the luckty numbers. Part of pentagram puzzle"""
 
     def __init__(self):
         super().__init__(channel_num=3)
@@ -377,13 +378,16 @@ class Channel6(Scene):
         surface.blit(self.crt_overlay, (0, 0))
 
 
-class Channel7(NoSignal):
+class Channel7(Scene):
+    """Sun channel. Part of sun and moon puzzle"""
+
     def __init__(self):
         super().__init__(7)
+        self.bg_color = 'white'
 
 
 class Channel8(Scene):
-    """Offline, but with puzzle instruction"""
+    """No signal. Part of pentagram puzzle"""
 
     def __init__(self):
         super().__init__(channel_num=8)
@@ -403,14 +407,52 @@ class Channel8(Scene):
         surface.blit(self.crt_overlay, (0, 0))
 
 
-class Channel9(NoSignal):
+class Channel9(Scene):
+    """Missing people channel or game credities"""
+
     def __init__(self):
         super().__init__(9)
+        self.set_scene()
+
+    def set_scene(self, name='Alexsander Rosante', photo_name='me'):
+        self.clear_all()
+        self.set_strip()
+        # photo
+        photo = pygame.sprite.Sprite()
+        photo.image = pygame.image.load(f'pics/{photo_name}.png').convert()
+        photo.image = pygame.transform.smoothscale(photo.image, 2 * [.35 * screen_h])
+        photo.rect = photo.image.get_rect(midbottom=(.5 * screen_w, .6 * screen_h))
+        self.add_sprite(photo)
+        # name
+        name = Text(name, 28, 'orange')
+        name.rect.midtop = .5 * screen_w, photo.rect.bottom + 30
+        self.add_sprite(name)
+
+    def set_strip(self):
+        # strip
+        strip = pygame.sprite.Sprite()
+        strip.image = pygame.Surface((screen_w, .15 * screen_h), SRCALPHA)
+        strip.image.fill('#1a1a1a')
+        strip.rect = strip.image.get_rect()
+        # text
+        text = Text('Missing person', 44, 'white')
+        text.rect.center = .5 * screen_w, .5 * strip.rect.h
+        strip.image.blit(text.image, text.rect)
+        # rotate strip
+        strip.image = pygame.transform.rotozoom(strip.image, 30, 1)
+        strip.rect.left -= .1 * screen_w
+        strip.rect.top -= .1 * screen_h
+        # add to group
+        self.add_sprite(strip)
+        self.drawables.change_layer(strip, 1)
 
 
-class Channel10(NoSignal):
+class Channel10(Scene):
+    """Moon channel. Part of sun and moon puzzle"""
+
     def __init__(self):
         super().__init__(10)
+        self.bg_color = '#1a1a1a'
 
 
 class SceneMenu(Scene):
@@ -444,7 +486,7 @@ class SceneMenu(Scene):
         text.rect.midbottom = .5 * screen_w, .5 * screen_h - 10
         button_yes.rect.topright = .5 * screen_w - 10, .5 * screen_h + 10
         button_no.rect.topleft = .5 * screen_w + 10, button_yes.rect.top
-        self.add_text(text)
+        self.add_sprite(text)
         self.add_button(button_yes)
         self.add_button(button_no)
 
@@ -589,6 +631,7 @@ def int_to_roman(num: int):
             }[num]
 
 
+########################################################################################################################
 if __name__ == '__main__':
     #
     with open('settings.json', 'r') as fp:

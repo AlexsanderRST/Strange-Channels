@@ -1,0 +1,16 @@
+*Creator:*
+Alexsander Rosante -
+
+*Created using:*
+Pygame -  https://www.pygame.org
+
+*Fonts:*
+Archivo - Omnibus-Type - https://fonts.google.com
+Arimo - Steve Matteson - https://fonts.google.com
+Source Sans Pro - Paul D. Hunt - https://fonts.google.com
+Syne Mono - Bonjour Monde & Lucas Descroix - https://fonts.google.com
+
+*SFXs:*
+VoiceMaker - https://voicemaker.in
+VoiceChanger - https://voicechanger.io
+Kdenlive - https://kdenlive.org
