@@ -276,7 +276,7 @@ class Channel2(NoSignal):
 
 
 class Channel3(Scene):
-    """A woman spelling the luckty numbers. Part of pentagram puzzle"""
+    """A woman spelling the lucky numbers. Part of pentagram puzzle"""
 
     def __init__(self):
         super().__init__(channel_num=3)
@@ -327,8 +327,11 @@ class Channel6(Scene):
 
     def __init__(self):
         super().__init__(channel_num=6)
+
+        # properties
         self.bg_color = '#1a1a1a'
         self.lines_colors = game.lucky_colors  # always 5 elements
+        self.update = self.event_1
 
         # set positions
         p1 = (.50 * screen_w, .20 * screen_h)
@@ -354,10 +357,17 @@ class Channel6(Scene):
             button.rect.center = pos
             self.add_button(button)
 
-    def check_lucky_nums_match(self):
+    def event_1(self, events: list):
+        """Check if the lucky nums match and go to event 2 if it does"""
+        super().update(events)
         if game.lucky_nums == int(''.join(str(button.get_value()) for button in self.buttons)):
             self.lines_colors = 5 * ['red']
             self.interactive_buttons = False
+            pygame.mixer.Sound('sfxs/my_side.mp3').play()
+            self.update = self.event_2
+
+    def event_2(self, events: list):
+        super().update(events)
 
     def draw_lines(self, surface: pygame.Surface):
         buttons = self.buttons.sprites()
@@ -366,10 +376,6 @@ class Channel6(Scene):
             pygame.draw.line(surface, self.lines_colors[i], start_point, end_point, 2)
         start_point, end_point = buttons[-1].rect.center, buttons[0].rect.center
         pygame.draw.line(surface, self.lines_colors[-1], start_point, end_point, 2)
-
-    def update(self, events: list):
-        super().update(events)
-        self.check_lucky_nums_match()
 
     def draw(self, surface: pygame.Surface):
         surface.fill(self.bg_color)
@@ -458,9 +464,15 @@ class Channel10(Scene):
 class SceneMenu(Scene):
     def __init__(self):
         super().__init__()
-        self.set_to_default()
+        # properties
         self.on_default = True
         self.click_cooldown = 1
+
+        # version
+        self.version = Text(version, text_size=24)
+        self.version.rect.bottomright = .93 * screen_w, .93 * screen_h
+
+        self.set_to_default()
 
     def check_events(self, events: list):
         for event in events:
@@ -501,12 +513,19 @@ class SceneMenu(Scene):
             button.rect.midleft = .1 * screen_w, (.2 + .15 * i) * screen_h
             self.add_button(button)
 
+    def draw(self, surface: pygame.Surface):
+        surface.fill(self.bg_color)
+        self.drawables.draw(surface)
+        surface.blit(self.version.image, self.version.rect)
+        surface.blit(self.crt_overlay, (0, 0))
+
 
 # Game #################################################################################################################
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((screen_w, screen_h), NOFRAME)
         pygame.display.set_caption(f'Strange Channels v{version}')
+        pygame.display.set_icon(pygame.image.load('pics/icon.png').convert())
         self.clock = pygame.time.Clock()
         self.events = pygame.event.get()
         self.loop = True
@@ -524,9 +543,10 @@ class Game:
         # states
         self.is_menu_open = False
 
-    def change_scene(self, scene: Scene):
+    def change_scene(self, scene: Scene, show_channel_num=True):
         self.scene = scene
-        self.show_channel_num(self.scene.channel_num)
+        if show_channel_num:
+            self.show_channel_num(self.scene.channel_num)
 
     def check_events(self):
         self.events = pygame.event.get()
