@@ -8,7 +8,7 @@
 
 *You're driving home when a strange salesman offers you a television set at a price you can't refuse. At night, 
 You decide to install the TV and watch your favorite sitcom. However, only a few channels work, and they are strange. 
-For some unknown reason, some of them seem to be connected to each other.
+For some unknown reason, some of them seem to be connected to each other.*
 
 Strange Channels is a 2D point-and-click puzzle game where you surf through strange channels and try to figure out what they mean. There are 10 channels and 1 puzzle at the moment.
 
